@@ -1,3 +1,2 @@
 В проекте используется:
-Newtonsoft.Json
-EntityFramework
+Newtonsoft.Json,EntityFramework,SQLite
