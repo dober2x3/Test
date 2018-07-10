@@ -6,6 +6,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Net.Http;
+using System.Threading;
+using System.Web;
 using Newtonsoft.Json;
 
 namespace Test
@@ -30,10 +32,12 @@ namespace Test
             var responseString = "";
             try
             {
-                responseString = await client.GetStringAsync("https://itunes.apple.com/search?term=" + search + "&entity=album");
-                AddCache(new Data() { Response = responseString, Search = search, date = DateTime.Now });
-                Debug.WriteLine("main {0}", DateTime.Now);
+                responseString = await client.GetStringAsync("https://itunes.apple.com/search?term=" + HttpUtility.UrlEncode(search) + "&entity=album");
+                //Асинхронное добавление кэша.
+                AddCache(new Cache() { Response = responseString, Search = search });
+                Debug.WriteLine("main {0},{1}", +Environment.CurrentManagedThreadId,DateTime.Now);
                 Show(responseString);
+                
             }
             catch (Exception e)
             {
@@ -66,35 +70,47 @@ namespace Test
             }
         }
 
-        private static async Task AddCache(Data cache)
+        private static async Task AddCache(Cache cache)
         {
-            using (var db = new Cache())
+            using (var db = new CacheContext())
             {
-                var item =await db.Data.SingleOrDefaultAsync(x => x.Search == cache.Search);
-                if (item!=null)
+                try
                 {
-                   item.Response = cache.Response;
-                    item.date = DateTime.Now;
+                    
+                    var item =db.Cache.SingleOrDefault(x => x.Search == cache.Search);
+                    if (item != null)
+                    {
+                        item.Response = cache.Response;
+                    }
+                    else
+                    {
+                        db.Cache.Add(cache);
+                    }
+                    //Вызов в БД без блокировки основного потока
+                    db.SaveChangesAsync();
+                    
+
                 }
-                else
+                catch (Exception e)
                 {
-                    db.Data.Add(cache);
+                    Console.WriteLine(e.Message);
+                    
                 }
-                db.SaveChangesAsync();
+                
             }
-            Debug.WriteLine("add {0}",DateTime.Now);
-        }
-        private static async Task GetCache(string search, Action<string> finishAction)
-        {
-            using (var db = new Cache())
-            {
-                var item = await db.Data.SingleOrDefaultAsync(x => x.Search == search);
-                if (item!=null)
-                    finishAction(db.Data.Single(x => x.Search == search).Response);
-              
-            }
-            Debug.WriteLine("Get {0}", DateTime.Now);
             
+        }
+        private static void GetCache(string search, Action<string> finishAction)
+        {
+            using (var db = new CacheContext())
+            {
+                var item = db.Cache.SingleOrDefault(x => x.Search == search);
+                if (item != null)
+                    finishAction(db.Cache.Single(x => x.Search == search).Response);
+
+            }
+            
+
         }
     }
 
