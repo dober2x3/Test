@@ -32,7 +32,7 @@ namespace Test
             var responseString = "";
             try
             {
-                responseString = await client.GetStringAsync("https://itunes.apple.com1/search?term=" + HttpUtility.UrlEncode(search) + "&entity=album");
+                responseString = await client.GetStringAsync("https://itunes.apple.com/search?term=" + HttpUtility.UrlEncode(search) + "&entity=album");
                 //Асинхронное добавление кэша.
                 AddCache(new Cache() { Response = responseString, Search = search });
                 
